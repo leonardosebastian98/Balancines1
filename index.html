@@ -483,17 +483,18 @@ function buildGolSeries(rows, equipoId) {
   realPts.push({ x: now.getTime(), y: cumul });
 
   // Objetivo: rampa lineal — golpes/ms × tiempo transcurrido
-  // se congela al fin del turno, no sigue creciendo fuera de él
-  const golPorMs  = GOL_OBJETIVO_VENTANA / (GOL_VENTANA_MIN * 60000);
-  const objCapAt  = now < si.shiftEndDate ? now : si.shiftEndDate;
+  // KPI = valor a now (congelado al fin del turno)
+  // Línea gráfica = rampa hasta now, luego proyección hasta xMax
+  const golPorMs = GOL_OBJETIVO_VENTANA / (GOL_VENTANA_MIN * 60000);
+  const objCapAt = now < si.shiftEndDate ? now : si.shiftEndDate; // congela al fin de turno
+  const objNow   = (objCapAt - si.shiftStartDate) * golPorMs;     // KPI: valor a now
   const objPts = [
     { x: si.shiftStartDate.getTime(), y: 0 },
-    { x: xMax.getTime(), y: (objCapAt - si.shiftStartDate) * golPorMs }
+    { x: objCapAt.getTime(),          y: objNow },                 // hasta now (o fin turno)
+    { x: xMax.getTime(),              y: (xMax - si.shiftStartDate) * golPorMs } // proyección
   ];
 
-  const elapsed = objCapAt - si.shiftStartDate;
-  const objNow  = elapsed * golPorMs;
-  const pct     = objNow > 0 ? (cumul / objNow) * 100 : 0;
+  const pct = objNow > 0 ? (cumul / objNow) * 100 : 0;
 
   return {
     realPts, objPts,
@@ -535,17 +536,19 @@ function buildEquipoSeries(rows, equipoId, tco) {
   events.forEach(e => { cumul++; realPts.push({ x: e.dt.getTime(), y: cumul }); });
   realPts.push({ x: now.getTime(), y: cumul });
 
-  // Objetivo (rampa lineal) — se congela al fin del turno
-  const pphora    = 3600 / tco;
-  const objCapAt  = now < si.shiftEndDate ? now : si.shiftEndDate; // no crece fuera de turno
-  const objPts    = [
+  // Objetivo (rampa lineal)
+  // KPI = valor a now (congelado al fin del turno)
+  // Línea gráfica = rampa hasta now, luego proyección hasta xMax
+  const pphora   = 3600 / tco;
+  const objCapAt = now < si.shiftEndDate ? now : si.shiftEndDate; // congela al fin de turno
+  const objNow   = (objCapAt - si.shiftStartDate) / 3600000 * pphora; // KPI: valor a now
+  const objPts   = [
     { x: si.shiftStartDate.getTime(), y: 0 },
-    { x: xMax.getTime(), y: (objCapAt - si.shiftStartDate) / 3600000 * pphora }
+    { x: objCapAt.getTime(),          y: objNow },                     // hasta now (o fin turno)
+    { x: xMax.getTime(),              y: (xMax - si.shiftStartDate) / 3600000 * pphora } // proyección
   ];
 
-  const elapsed = (objCapAt - si.shiftStartDate) / 3600000;
-  const objNow  = elapsed * pphora;
-  const pct     = objNow > 0 ? (cumul / objNow) * 100 : 0;
+  const pct = objNow > 0 ? (cumul / objNow) * 100 : 0;
 
   return {
     realPts, objPts,
